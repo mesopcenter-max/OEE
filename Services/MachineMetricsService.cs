@@ -33,11 +33,11 @@ public sealed class MachineMetricsService
         var totals = await ReadWindowAsync(connection, window, latestSample, isDataFresh, now, cancellationToken);
         var windowSeconds = (window.End - window.Start).TotalSeconds;
         var coveragePercent = window.End > window.Start ? Math.Min(100, totals.ObservedSeconds / windowSeconds * 100) : 0;
-        double? availabilityPercent = totals.ObservedSeconds > 0 && coveragePercent >= 90
-            ? Math.Clamp(totals.RunningSeconds / windowSeconds * 100, 0, 100)
+        double? availabilityPercent = totals.ObservedSeconds > 0
+            ? Math.Clamp(totals.RunningSeconds / totals.ObservedSeconds * 100, 0, 100)
             : null;
-        double? performancePercent = totals.SampleCount > 0 && coveragePercent >= 90 && windowSeconds > 0
-            ? totals.Parts * 100d / (TargetPartsPerEightHourShift * windowSeconds / EightHourShiftSeconds)
+        double? performancePercent = totals.SampleCount > 0 && totals.ObservedSeconds > 0
+            ? totals.Parts * 100d / (TargetPartsPerEightHourShift * totals.ObservedSeconds / EightHourShiftSeconds)
             : null;
         double qualityPercent = 100d;
         double? oeePercent = availabilityPercent is null || performancePercent is null
@@ -70,7 +70,9 @@ public sealed class MachineMetricsService
             oeePercent,
             (long)Math.Round(totals.RunningSeconds),
             (long)Math.Round(windowSeconds),
-            Math.Round(coveragePercent, 1));
+            Math.Round(coveragePercent, 1),
+            BuildTimeSeries(totals.Buckets, window),
+            totals.StatusTimeline);
     }
 
     private static async Task<Sample?> GetLatestSampleAsync(SqlConnection connection, CancellationToken cancellationToken)
@@ -134,6 +136,11 @@ public sealed class MachineMetricsService
         var pendingStart = false;
         Sample? previous = null;
 
+        var bucketCount = (int)Math.Ceiling((window.End - window.Start).TotalSeconds / TimeSeriesBucketSeconds);
+        var buckets = Enumerable.Range(0, bucketCount).Select(_ => new MetricsBucket()).ToArray();
+        var statusTimeline = new List<MachineStatusPeriod>();
+        var timelineCursor = window.Start;
+
         await using (var reader = await command.ExecuteReaderAsync(cancellationToken))
         {
             while (await reader.ReadAsync(cancellationToken))
@@ -166,20 +173,27 @@ public sealed class MachineMetricsService
                         runningSeconds += intervalSeconds;
                     }
 
+                    AddIntervalToBuckets(buckets, window, intervalStart, intervalEnd, previous.AutoStartLed);
+                    AddStatusPeriod(statusTimeline, ref timelineCursor, intervalStart, intervalEnd, previous.AutoStartLed ? "Running" : "Stopped", window);
+
                     if (current.CapturedAt >= window.Start && current.CapturedAt < window.End)
                     {
+                        var bucketIndex = GetBucketIndex(current.CapturedAt, window, buckets.Length);
                         if (!previous.AutoStartLed && current.AutoStartLed)
                         {
                             starts++;
+                            buckets[bucketIndex].Starts++;
                             pendingStart = true;
                         }
 
                         if (!previous.AutoStopLed && current.AutoStopLed)
                         {
                             stops++;
+                            buckets[bucketIndex].Stops++;
                             if (pendingStart)
                             {
                                 parts++;
+                                buckets[bucketIndex].Parts++;
                                 pendingStart = false;
                             }
                         }
@@ -200,9 +214,17 @@ public sealed class MachineMetricsService
             var intervalSeconds = Math.Max(0, (intervalEnd - intervalStart).TotalSeconds);
             runningSeconds += intervalSeconds;
             observedSeconds += intervalSeconds;
+
+            AddIntervalToBuckets(buckets, window, intervalStart, intervalEnd, previous.AutoStartLed);
+            AddStatusPeriod(statusTimeline, ref timelineCursor, intervalStart, intervalEnd, previous.AutoStartLed ? "Running" : "Stopped", window);
         }
 
-        return new WindowTotals(starts, stops, parts, runningSeconds, observedSeconds, sampleCount, lastWindowSample);
+        if (timelineCursor < window.End)
+        {
+            AddOrMergeStatusPeriod(statusTimeline, timelineCursor, window.End, "Unknown");
+        }
+
+        return new WindowTotals(starts, stops, parts, runningSeconds, observedSeconds, sampleCount, lastWindowSample, buckets, statusTimeline);
     }
 
     private static TimeWindow CreateWindow(DateOnly date, string shift)
@@ -219,10 +241,105 @@ public sealed class MachineMetricsService
         };
     }
 
+    private const double TimeSeriesBucketSeconds = 1800;
+
+    private static IReadOnlyList<MetricTimePoint> BuildTimeSeries(MetricsBucket[] buckets, TimeWindow window)
+    {
+        var points = new List<MetricTimePoint>(buckets.Length);
+        for (var index = 0; index < buckets.Length; index++)
+        {
+            var bucketStart = window.Start.AddSeconds(index * TimeSeriesBucketSeconds);
+            var bucketSeconds = Math.Min(TimeSeriesBucketSeconds, (window.End - bucketStart).TotalSeconds);
+            var bucket = buckets[index];
+            var coverage = bucketSeconds > 0 ? bucket.ObservedSeconds / bucketSeconds * 100 : 0;
+            double? availability = coverage >= 50 && bucket.ObservedSeconds > 0
+                ? Math.Clamp(bucket.RunningSeconds / bucket.ObservedSeconds * 100, 0, 100)
+                : null;
+            double? performance = coverage >= 50 && bucket.ObservedSeconds > 0
+                ? bucket.Parts * 100d / (TargetPartsPerEightHourShift * bucket.ObservedSeconds / EightHourShiftSeconds)
+                : null;
+            double? quality = coverage >= 50 ? 100d : null;
+            double? oee = availability is null || performance is null || quality is null
+                ? null
+                : availability.Value * quality.Value * performance.Value / 10000d;
+            points.Add(new MetricTimePoint(bucketStart, oee, availability, performance, quality));
+        }
+
+        return points;
+    }
+
+    private static void AddIntervalToBuckets(MetricsBucket[] buckets, TimeWindow window, DateTime start, DateTime end, bool isRunning)
+    {
+        var cursor = Max(start, window.Start);
+        var clippedEnd = Min(end, window.End);
+        while (cursor < clippedEnd)
+        {
+            var bucketIndex = GetBucketIndex(cursor, window, buckets.Length);
+            var bucketEnd = Min(clippedEnd, window.Start.AddSeconds((bucketIndex + 1) * TimeSeriesBucketSeconds));
+            var seconds = (bucketEnd - cursor).TotalSeconds;
+            buckets[bucketIndex].ObservedSeconds += seconds;
+            if (isRunning)
+            {
+                buckets[bucketIndex].RunningSeconds += seconds;
+            }
+            cursor = bucketEnd;
+        }
+    }
+
+    private static int GetBucketIndex(DateTime timestamp, TimeWindow window, int bucketCount)
+    {
+        var index = (int)((timestamp - window.Start).TotalSeconds / TimeSeriesBucketSeconds);
+        return Math.Clamp(index, 0, bucketCount - 1);
+    }
+
+    private static void AddStatusPeriod(List<MachineStatusPeriod> periods, ref DateTime cursor, DateTime start, DateTime end, string state, TimeWindow window)
+    {
+        start = Max(start, window.Start);
+        end = Min(end, window.End);
+        if (end <= start)
+        {
+            return;
+        }
+
+        if (start > cursor)
+        {
+            AddOrMergeStatusPeriod(periods, cursor, start, "Unknown");
+        }
+
+        start = Max(start, cursor);
+        if (end > start)
+        {
+            AddOrMergeStatusPeriod(periods, start, end, state);
+            cursor = end;
+        }
+    }
+
+    private static void AddOrMergeStatusPeriod(List<MachineStatusPeriod> periods, DateTime start, DateTime end, string state)
+    {
+        if (periods.Count > 0 && periods[^1].State == state && periods[^1].EndAt == start)
+        {
+            var previous = periods[^1];
+            periods[^1] = previous with { EndAt = end, DurationSeconds = (end - previous.StartAt).TotalSeconds };
+        }
+        else
+        {
+            periods.Add(new MachineStatusPeriod(start, end, state, (end - start).TotalSeconds));
+        }
+    }
+
     private static DateTime Min(DateTime left, DateTime right) => left <= right ? left : right;
     private static DateTime Max(DateTime left, DateTime right) => left >= right ? left : right;
 
+    private sealed class MetricsBucket
+    {
+        public double ObservedSeconds { get; set; }
+        public double RunningSeconds { get; set; }
+        public long Starts { get; set; }
+        public long Stops { get; set; }
+        public long Parts { get; set; }
+    }
+
     private sealed record Sample(DateTime CapturedAt, bool AutoStartLed, bool AutoStopLed);
     private sealed record TimeWindow(DateTime Start, DateTime End);
-    private sealed record WindowTotals(long Starts, long Stops, long Parts, double RunningSeconds, double ObservedSeconds, long SampleCount, Sample? LastWindowSample);
+    private sealed record WindowTotals(long Starts, long Stops, long Parts, double RunningSeconds, double ObservedSeconds, long SampleCount, Sample? LastWindowSample, MetricsBucket[] Buckets, IReadOnlyList<MachineStatusPeriod> StatusTimeline);
 }

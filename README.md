@@ -19,6 +19,8 @@ The user selects a calendar date and one of All shifts, Shift 1, Shift 2, or Shi
 - **Quality** is fixed at 100%.
 - **Performance** percentage is calculated as completed parts divided by a target of 30 parts per 8-hour shift (scaled proportionally for All shifts).
 - **OEE** is Availability × Quality × Performance using percentage values divided by 10,000.
+- The dashboard graphs OEE, availability, performance, and quality in 30-minute intervals for the selected date/shift.
+- The machine-status timeline is derived from AutoStartLed samples, showing Running, Stopped, and Unknown periods with hoverable start/end timestamps and durations. Unobserved data gaps are shown as Unknown.
 
 The UI also indicates when the latest database sample is stale and requires LocalDB access under the app's Windows identity.
 

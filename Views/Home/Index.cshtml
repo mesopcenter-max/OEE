@@ -1,29 +1,37 @@
 <div class="app-shell">
     <header class="topbar">
         <div class="brand-mark">▦</div>
-        <div class="brand-name">HAl Foundary and Forge</div>
+        <div class="brand-name">HAL Foundry and Forge</div>
         <div class="app-name">OEE Hub</div>
     </header>
 
     <aside class="hierarchy">
         <div class="hierarchy-title">Hierarchy</div>
-        <div class="search-wrap"><span>☷</span><input id="treeSearch" placeholder="Search ..." /><small>1 / 1</small></div>
+        <div class="search-wrap"><span aria-hidden="true">☷</span><input id="treeSearch" placeholder="Search ..." aria-label="Search hierarchy" /></div>
         <div class="tree">
-            <div class="tree-row"><span class="chevron">⌄</span><span class="cube">⬡</span><b>Strat</b></div>
-            <div class="tree-child">
-                <div class="tree-row"><span class="chevron">⌄</span><span class="branch">♧</span><b>Ring Rolling Unit 1</b></div>
-                <div class="tree-child">
-                    <div class="tree-row selected machine" data-machine="MRB 3000"><span class="branch">♧</span><b>MRB 3000</b><span class="tree-status">◉</span></div>
-                </div>
-                <div class="tree-child">
-                    <div class="tree-row selected machine" data-machine="MRB 3001"><span class="branch">♧</span><b>MRB 3000</b><span class="tree-status">◉</span></div>
-                </div>
-                 <div class="tree-row"><span class="chevron">⌄</span><span class="branch">♧</span><b>Ring Rolling Unit 2</b></div>
-                <div class="tree-child">
-                    <div class="tree-row selected machine" data-machine="MRB 3000"><span class="branch">♧</span><b>MRB 3000</b><span class="tree-status">◉</span></div>
-                </div>
-                <div class="tree-child">
-                    <div class="tree-row selected machine" data-machine="MRB 3001"><span class="branch">♧</span><b>MRB 3000</b><span class="tree-status">◉</span></div>
+            <div class="tree-node">
+                <button class="tree-row tree-toggle" type="button" aria-expanded="true" aria-controls="foundryChildren">
+                    <span class="chevron" aria-hidden="true">⌄</span><span class="tree-icon foundry-icon" aria-hidden="true">▦</span><b>Foundry and Forge</b>
+                </button>
+                <div class="tree-children" id="foundryChildren">
+                    <div class="tree-node">
+                        <button class="tree-row tree-toggle" type="button" aria-expanded="true" aria-controls="unit1Machines">
+                            <span class="chevron" aria-hidden="true">⌄</span><span class="tree-icon unit-icon" aria-hidden="true">⚙</span><b>Ring Rolling Unit 1</b>
+                        </button>
+                        <div class="tree-children" id="unit1Machines">
+                            <button class="tree-row machine selected" type="button" data-machine="MRB 3000"><span class="tree-icon machine-icon" aria-hidden="true">▣</span><b>MRB 3000</b><span class="tree-status" aria-label="Machine status">◉</span></button>
+                            <button class="tree-row machine" type="button" data-machine="MRB 3001"><span class="tree-icon machine-icon" aria-hidden="true">▣</span><b>MRB 3001</b><span class="tree-status" aria-label="Machine status">◉</span></button>
+                        </div>
+                    </div>
+                    <div class="tree-node">
+                        <button class="tree-row tree-toggle" type="button" aria-expanded="true" aria-controls="unit2Machines">
+                            <span class="chevron" aria-hidden="true">⌄</span><span class="tree-icon unit-icon" aria-hidden="true">⚙</span><b>Ring Rolling Unit 2</b>
+                        </button>
+                        <div class="tree-children" id="unit2Machines">
+                            <button class="tree-row machine" type="button" data-machine="MRB 3000"><span class="tree-icon machine-icon" aria-hidden="true">▣</span><b>MRB 3000</b><span class="tree-status" aria-label="Machine status">◉</span></button>
+                            <button class="tree-row machine" type="button" data-machine="MRB 3001"><span class="tree-icon machine-icon" aria-hidden="true">▣</span><b>MRB 3001</b><span class="tree-status" aria-label="Machine status">◉</span></button>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -53,7 +61,7 @@
         <section class="kpi-grid">
             <article class="kpi-card">
                 <h3>OEE</h3>
-                <div class="value" id="oeeValue">—</div>
+                <div class="gauge" id="oeeGauge" role="img" aria-label="Overall equipment effectiveness"><div class="gauge-inner"><strong id="oeeValue">—</strong></div></div>
                 <div class="note">Target: 30 parts per 8-hour shift</div>
             </article>
             <article class="kpi-card">
@@ -66,7 +74,7 @@
             </article>
             <article class="kpi-card">
                 <h3>Performance</h3>
-                <div class="value" id="performanceValue">—</div>
+                <div class="gauge" id="performanceGauge" role="img" aria-label="Performance target attainment"><div class="gauge-inner"><strong id="performanceValue">—</strong></div></div>
                 <div class="note">Target: 30 parts per 8-hour shift</div>
             </article>
             <article class="kpi-card">
@@ -77,6 +85,22 @@
                     </div>
                 </div>
             </article>
+        </section>
+
+        <section class="chart-panel" aria-labelledby="trendTitle">
+            <div class="panel-heading">
+                <h2 id="trendTitle">OEE trend · selected date and shift</h2>
+                <span id="chartSummary">30-minute intervals</span>
+            </div>
+            <div class="chart-scroll">
+                <svg id="oeeTrendChart" class="trend-chart" role="img" aria-label="OEE, availability, performance, and quality over the selected reporting window"></svg>
+            </div>
+            <div class="chart-legend" aria-label="Chart legend">
+                <span><i class="legend-oee"></i>OEE</span>
+                <span><i class="legend-availability"></i>Availability</span>
+                <span><i class="legend-performance"></i>Performance</span>
+                <span><i class="legend-quality"></i>Quality</span>
+            </div>
         </section>
 
         <section class="production-panel">
@@ -98,6 +122,20 @@
                     <div class="metric-icon">◷</div>
                     <div><span>Stop events</span><strong id="stopEvents">—</strong></div>
                 </div>
+            </div>
+        </section>
+
+        <section class="status-panel" aria-labelledby="statusTitle">
+            <div class="panel-heading">
+                <h2 id="statusTitle">Machine status over time</h2>
+                <span id="statusSummary">Actual recorded states · hover for details</span>
+            </div>
+            <div id="statusTimeline" class="status-timeline" role="list" aria-label="Machine state intervals"></div>
+            <div id="timelineLabels" class="timeline-labels"></div>
+            <div class="status-legend">
+                <span><i class="status-swatch running-swatch"></i>Running</span>
+                <span><i class="status-swatch stopped-swatch"></i>Stopped</span>
+                <span><i class="status-swatch unknown-swatch"></i>No data</span>
             </div>
         </section>
 

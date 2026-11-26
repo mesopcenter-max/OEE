@@ -18,4 +18,10 @@ public sealed record MachineMetrics(
     double? OeePercent,
     long RunningSeconds,
     long WindowSeconds,
-    double DataCoveragePercent);
+    double DataCoveragePercent,
+    IReadOnlyList<MetricTimePoint> TimeSeries,
+    IReadOnlyList<MachineStatusPeriod> StatusTimeline);
+
+public sealed record MetricTimePoint(DateTime At, double? OeePercent, double? AvailabilityPercent, double? PerformancePercent, double? QualityPercent);
+
+public sealed record MachineStatusPeriod(DateTime StartAt, DateTime EndAt, string State, double DurationSeconds);

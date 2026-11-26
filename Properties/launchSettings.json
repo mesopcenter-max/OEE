@@ -1,0 +1,12 @@
+{
+  "profiles": {
+    "OEE UI - 5017": {
+      "commandName": "Project",
+      "applicationUrl": "http://127.0.0.1:5017",
+      "workingDirectory": "$(ProjectDir)",
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      }
+    }
+  }
+}
