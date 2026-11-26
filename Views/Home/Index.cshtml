@@ -1,0 +1,118 @@
+<div class="app-shell">
+    <header class="topbar">
+        <div class="brand-mark">▦</div>
+        <div class="brand-name">HAl Foundary and Forge</div>
+        <div class="app-name">OEE Hub</div>
+    </header>
+
+    <aside class="hierarchy">
+        <div class="hierarchy-title">Hierarchy</div>
+        <div class="search-wrap"><span>☷</span><input id="treeSearch" placeholder="Search ..." /><small>1 / 1</small></div>
+        <div class="tree">
+            <div class="tree-row"><span class="chevron">⌄</span><span class="cube">⬡</span><b>Strat</b></div>
+            <div class="tree-child">
+                <div class="tree-row"><span class="chevron">⌄</span><span class="branch">♧</span><b>Ring Rolling Unit 1</b></div>
+                <div class="tree-child">
+                    <div class="tree-row selected machine" data-machine="MRB 3000"><span class="branch">♧</span><b>MRB 3000</b><span class="tree-status">◉</span></div>
+                </div>
+                <div class="tree-child">
+                    <div class="tree-row selected machine" data-machine="MRB 3001"><span class="branch">♧</span><b>MRB 3000</b><span class="tree-status">◉</span></div>
+                </div>
+                 <div class="tree-row"><span class="chevron">⌄</span><span class="branch">♧</span><b>Ring Rolling Unit 2</b></div>
+                <div class="tree-child">
+                    <div class="tree-row selected machine" data-machine="MRB 3000"><span class="branch">♧</span><b>MRB 3000</b><span class="tree-status">◉</span></div>
+                </div>
+                <div class="tree-child">
+                    <div class="tree-row selected machine" data-machine="MRB 3001"><span class="branch">♧</span><b>MRB 3000</b><span class="tree-status">◉</span></div>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <main class="main-panel">
+
+        <section class="filters">
+            <label class="date-filter">Date 
+                <div class="date-input-wrap">
+                    <input id="selectedDate" type="date" class="filter-control" />
+                    <button id="openCalendar" class="calendar-button" type="button" aria-label="Open calendar" title="Open calendar">▦</button>
+                </div>
+            </label>
+            <label>Shift
+                <select id="shiftFilter" class="filter-control">
+                    <option value="all">All shifts</option>
+                    <option value="1">Shift 1 · 7:00 AM–3:00 PM</option>
+                    <option value="2">Shift 2 · 3:00 PM–11:00 PM</option>
+                    <option value="3">Shift 3 · 11:00 PM–7:00 AM</option>
+                </select>
+            </label>
+        </section>
+
+        <div class="view-select">Currently viewing:<br><a href="#">Overview⌄</a></div>
+
+        <section class="kpi-grid">
+            <article class="kpi-card">
+                <h3>OEE</h3>
+                <div class="value" id="oeeValue">—</div>
+                <div class="note">Target: 30 parts per 8-hour shift</div>
+            </article>
+            <article class="kpi-card">
+                <h3>Availability <span>↗</span></h3>
+                <div class="gauge" id="availabilityGauge" style="--value:0;--gauge-color:#00a84f">
+                    <div class="gauge-inner">
+                        <strong id="availabilityValue">—</strong>
+                    </div>
+                </div>
+            </article>
+            <article class="kpi-card">
+                <h3>Performance</h3>
+                <div class="value" id="performanceValue">—</div>
+                <div class="note">Target: 30 parts per 8-hour shift</div>
+            </article>
+            <article class="kpi-card">
+                <h3>Quality <span>↗</span></h3>
+                <div class="gauge" id="qualityGauge" style="--value:100;--gauge-color:#00a84f">
+                    <div class="gauge-inner">
+                        <strong id="qualityValue">100%</strong>
+                    </div>
+                </div>
+            </article>
+        </section>
+
+        <section class="production-panel">
+            <h2>Production details</h2>
+            <div class="production-grid">
+                <div class="metric">
+                    <div class="metric-icon">◷</div>
+                    <div><span>Reporting window</span><strong id="windowTime">—</strong></div>
+                </div>
+                <div class="metric">
+                    <div class="metric-icon">◷</div>
+                    <div><span>Machine on time</span><strong id="runningTime">—</strong></div>
+                </div>
+                <div class="metric">
+                    <div class="metric-icon">¹²³</div>
+                    <div><span>Start events</span><strong id="startEvents">—</strong></div>
+                </div>
+                <div class="metric">
+                    <div class="metric-icon">◷</div>
+                    <div><span>Stop events</span><strong id="stopEvents">—</strong></div>
+                </div>
+            </div>
+        </section>
+
+        <section class="machine-panel">
+            <div class="machine-head">
+                <h2>Selected shift data</h2>
+                <button id="refreshStatus" title="Refresh">⟳</button>
+            </div>
+            <div class="machine-state" id="machineState">Loading...</div>
+            <div id="selectedWindow">Loading selected window...</div>
+            <div>Samples in selected window: <strong id="sampleCount">—</strong></div>
+            <div>Parts executed: <strong id="partsCount">—</strong></div>
+            <div id="lastSample">Last sample in selected window: —</div>
+            <small id="dataCoverage">Checking data coverage...</small>
+        </section>
+        <footer>HAL · Opcenter OEE · HALProcessRecord<span id="databaseStatus">Connecting...</span></footer>
+    </main>
+</div>
